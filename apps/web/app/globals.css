@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f8faf7;
+  color: #11120f;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+code,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.zecguard-grid {
+  background-color: #f4f2ea;
+  background-image:
+    linear-gradient(rgba(17, 18, 15, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 18, 15, 0.055) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.memo-paper {
+  background:
+    repeating-linear-gradient(0deg, rgba(17, 18, 15, 0.055) 0 1px, transparent 1px 28px),
+    #fffdf4;
+}
+
+.hash-text {
+  overflow-wrap: anywhere;
+  font-variant-ligatures: none;
+}

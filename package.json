@@ -1,0 +1,21 @@
+{
+  "name": "zecguard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first Zcash recovery readiness and private guardian coordination prototype.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @zecguard/web",
+    "dev:web": "npm run dev --workspace @zecguard/web",
+    "dev:bridge": "npm run dev --workspace @zecguard/bridge",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
