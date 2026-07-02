@@ -1,6 +1,7 @@
 node_modules/
 .code/
 AGENTS.md
+RTK.md
 PRD.md
 .next/
 dist/
