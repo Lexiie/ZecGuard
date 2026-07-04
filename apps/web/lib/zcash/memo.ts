@@ -16,6 +16,11 @@ export type ZecGuardMemo = {
   version?: string;
 };
 
+export type ZecGuardMemoScanResult = {
+  memo: ZecGuardMemo;
+  payload: string;
+};
+
 const requiredFieldsByType: Record<ZecGuardMemoType, Array<keyof ZecGuardMemo>> = {
   GUARDIAN_INVITE: ["type", "plan_id", "guardian_id", "threshold", "package_hash", "reply_to"],
   GUARDIAN_ACK: ["type", "plan_id", "guardian_id", "package_hash", "status"],
@@ -65,6 +70,24 @@ export function parseZecGuardMemo(input: string): ZecGuardMemo {
   return memo;
 }
 
+export function scanZecGuardMemos(input: unknown): ZecGuardMemoScanResult[] {
+  const payloads = new Map<string, string>();
+
+  for (const candidate of collectMemoCandidateStrings(input)) {
+    for (const payload of extractMemoPayloads(candidate)) {
+      payloads.set(payload, payload);
+    }
+  }
+
+  return [...payloads.values()].flatMap((payload) => {
+    try {
+      return [{ memo: parseZecGuardMemo(payload), payload }];
+    } catch {
+      return [];
+    }
+  });
+}
+
 export function validateMemo(memo: ZecGuardMemo): void {
   if (!isMemoType(memo.type)) {
     throw new Error("Unsupported ZecGuard memo type");
@@ -79,4 +102,57 @@ export function validateMemo(memo: ZecGuardMemo): void {
 
 function isMemoType(value: string): value is ZecGuardMemoType {
   return (memoTypes as readonly string[]).includes(value);
+}
+
+function collectMemoCandidateStrings(input: unknown): string[] {
+  if (typeof input !== "string") {
+    if (input && typeof input === "object") {
+      return Object.values(input).flatMap((value) => collectMemoCandidateStrings(value));
+    }
+    return [];
+  }
+
+  const candidates = [input];
+  try {
+    candidates.push(...collectMemoCandidateStrings(JSON.parse(input)));
+  } catch {
+    // Raw wallet output is often plain text, not JSON.
+  }
+  return candidates;
+}
+
+function extractMemoPayloads(candidate: string): string[] {
+  const normalized = candidate.includes(`${ZECGUARD_MEMO_PREFIX}\n`) ? candidate : candidate.replaceAll("\\r\\n", "\n").replaceAll("\\n", "\n");
+  const lines = normalized.replaceAll("\r\n", "\n").split("\n");
+  const payloads: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (lines[index].trim() !== ZECGUARD_MEMO_PREFIX) {
+      continue;
+    }
+
+    const payloadLines = [ZECGUARD_MEMO_PREFIX];
+    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+      const line = lines[cursor].trim();
+      if (!line || line === ZECGUARD_MEMO_PREFIX) {
+        break;
+      }
+      if (!isKnownMemoLine(line)) {
+        break;
+      }
+      payloadLines.push(line);
+    }
+
+    payloads.push(payloadLines.join("\n"));
+  }
+
+  return payloads;
+}
+
+function isKnownMemoLine(line: string): boolean {
+  const separatorIndex = line.indexOf(":");
+  if (separatorIndex <= 0) {
+    return false;
+  }
+  return ["type", "plan_id", "guardian_id", "threshold", "package_hash", "reply_to", "note", "status", "version"].includes(line.slice(0, separatorIndex));
 }

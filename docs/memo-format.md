@@ -50,3 +50,6 @@ version:0
 
 Do not put seed phrases, spending keys, viewing keys, or guardian shares in plaintext memos.
 
+## Scanner Behavior
+
+Wallet and bridge output may contain unrelated text. ZecGuard scans that output for `ZECGUARD:v0` blocks, parses them with the same strict memo parser, and ignores malformed or unrelated payloads. ACKs are accepted only when the plan ID, guardian ID, and package hash match the active plan.

@@ -7,6 +7,7 @@
 - 2-of-3 guardian shares.
 - ZecGuard memo generation and parsing.
 - Local wallet bridge.
+- Bridge ACK memo scanning.
 - Manual fallback.
 - Readiness dashboard.
 - Reconstruction drill.
@@ -35,4 +36,3 @@
 - Wallet SDK.
 - Standardized ZecGuard memo schema.
 - Guardian rotation and share refresh.
-

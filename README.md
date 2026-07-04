@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=for-the-badge&labelColor=11120f)
 ![Next.js](https://img.shields.io/badge/Next.js-App%20Router-ffffff?style=for-the-badge&labelColor=11120f)
 ![Fastify](https://img.shields.io/badge/Fastify-local%20bridge-000000?style=for-the-badge&labelColor=11120f)
-![Tests](https://img.shields.io/badge/tests-10%20passing-0d5c4a?style=for-the-badge&labelColor=11120f)
+![Tests](https://img.shields.io/badge/tests-13%20passing-0d5c4a?style=for-the-badge&labelColor=11120f)
 
 **Private guardian coordination and recovery readiness for Zcash users.**
 
@@ -29,6 +29,7 @@ Create -> Encrypt -> Split -> Send Memo -> Acknowledge -> Verify -> Reconstruct
 - Splits the package encryption key into `2-of-3` guardian shares.
 - Generates `ZECGUARD:v0` memo payloads for guardian invites, ACKs, and package anchors.
 - Supports a local wallet bridge for memo sending and a manual copy/txid fallback.
+- Scans local bridge memo output for matching guardian ACKs.
 - Imports encrypted package/share JSON files for a reconstruction drill.
 - Verifies decrypted package integrity against the original package hash.
 
@@ -90,7 +91,7 @@ Do not run `next build` while the dev server is running. If the dev server start
 3. Run the package drill to encrypt the package, hash it, split the package key, and generate memo payloads.
 4. Download the encrypted package JSON and each guardian share JSON separately.
 5. Send or copy the guardian invite memo. If the bridge is unavailable, paste a manual txid.
-6. Paste a guardian ACK memo to update readiness.
+6. Sync and scan local bridge memos for ACKs, or paste a guardian ACK memo manually.
 7. Import the encrypted package and two share files on the reconstruction page.
 8. Reconstruct, decrypt, and verify the package hash.
 
@@ -169,6 +170,7 @@ Current core tests cover:
 - Insufficient-share failure.
 - Share plan/package-hash binding.
 - Memo formatting/parsing/rejection.
+- Memo scanning from bridge-style wallet output.
 
 ## Documentation
 
@@ -177,4 +179,3 @@ Current core tests cover:
 - [Demo flow](docs/demo-flow.md)
 - [Architecture](docs/architecture.md)
 - [Roadmap](docs/roadmap.md)
-

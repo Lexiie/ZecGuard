@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Copy, RadioTower, Send, Signal, WifiOff } from "lucide-react";
+import { Copy, Inbox, RadioTower, RefreshCw, Send, Signal, WifiOff } from "lucide-react";
 import { usePlanStore } from "@/lib/storage/plan-store";
-import { getBridgeHealth, sendMemoWithBridge, type BridgeHealth } from "@/lib/zcash/bridge-client";
-import { parseZecGuardMemo } from "@/lib/zcash/memo";
+import { getBridgeHealth, listBridgeMemos, sendMemoWithBridge, syncBridgeWallet, type BridgeHealth } from "@/lib/zcash/bridge-client";
+import { parseZecGuardMemo, scanZecGuardMemos, type ZecGuardMemo } from "@/lib/zcash/memo";
+
+type ScannedAck = {
+  guardianId: string;
+  guardianName: string;
+  payload: string;
+};
 
 export function SendMemoPanel() {
   const plan = usePlanStore((state) => state.plan);
@@ -18,6 +24,10 @@ export function SendMemoPanel() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [ackMessage, setAckMessage] = useState<string | null>(null);
+  const [isScanningBridge, setIsScanningBridge] = useState(false);
+  const [bridgeScanMessage, setBridgeScanMessage] = useState<string | null>(null);
+  const [bridgeScanError, setBridgeScanError] = useState<string | null>(null);
+  const [scannedAcks, setScannedAcks] = useState<ScannedAck[]>([]);
 
   const invites = memoRecords.filter((record) => record.type === "GUARDIAN_INVITE");
   const selectedInvite = invites[0];
@@ -82,40 +92,84 @@ export function SendMemoPanel() {
 
     try {
       const parsed = parseZecGuardMemo(rawMemo);
-      if (parsed.type !== "GUARDIAN_ACK") {
-        throw new Error("Memo is not a GUARDIAN_ACK");
-      }
-      if (parsed.plan_id !== plan.id) {
-        throw new Error("ACK plan_id does not match the active plan");
-      }
-      if (parsed.package_hash !== plan.packageHash) {
-        throw new Error("ACK package_hash does not match the active package");
-      }
-      if (!parsed.guardian_id) {
-        throw new Error("ACK is missing guardian_id");
-      }
-
-      const matchingGuardian = guardians.find((item) => item.id === parsed.guardian_id);
-      if (!matchingGuardian) {
-        throw new Error("ACK guardian_id is not in this plan");
-      }
-
-      upsertMemoRecord({
-        id: `${plan.id}:${parsed.guardian_id}:ack:manual`,
-        planId: plan.id,
-        guardianId: parsed.guardian_id,
-        type: "GUARDIAN_ACK",
-        memo: rawMemo,
-        txid: txid || undefined,
-        direction: "guardian_to_owner",
-        status: "recorded",
-        createdAt: new Date().toISOString()
-      });
-      updateGuardian(parsed.guardian_id, { ackTxid: txid || undefined, status: "ack_received" });
+      const matchingGuardian = recordAck(parsed, rawMemo, txid || undefined, "manual");
       setAckMessage(`ACK recorded for ${matchingGuardian.name}`);
     } catch (error) {
       setAckMessage(error instanceof Error ? error.message : "Unable to parse ACK memo");
     }
+  }
+
+  async function scanBridgeForAcks() {
+    if (!plan) {
+      return;
+    }
+
+    setIsScanningBridge(true);
+    setBridgeScanError(null);
+    setBridgeScanMessage(null);
+    setScannedAcks([]);
+
+    try {
+      const syncResult = await syncBridgeWallet();
+      if (!syncResult.ok) {
+        throw new Error(syncResult.error ?? "Bridge sync failed");
+      }
+      const result = await listBridgeMemos();
+      if (!result.ok || !result.raw) {
+        throw new Error(result.error ?? "Bridge did not return wallet memos");
+      }
+
+      const matches = scanZecGuardMemos(`${result.raw.stdout}\n${result.raw.stderr}`)
+        .filter(({ memo }) => memo.type === "GUARDIAN_ACK" && memo.plan_id === plan.id && memo.package_hash === plan.packageHash)
+        .map(({ memo, payload }, index) => {
+          const matchingGuardian = recordAck(memo, payload, undefined, `bridge:${index}`);
+          return { guardianId: matchingGuardian.id, guardianName: matchingGuardian.name, payload };
+        });
+
+      setScannedAcks(matches);
+      setBridgeScanMessage(matches.length ? `Recorded ${matches.length} matching ACK memo${matches.length === 1 ? "" : "s"} from bridge output.` : "No matching ZecGuard ACK memos found for this plan and package hash.");
+    } catch (error) {
+      setBridgeScanError(error instanceof Error ? error.message : "Unable to scan bridge memos");
+    } finally {
+      setIsScanningBridge(false);
+    }
+  }
+
+  function recordAck(parsed: ZecGuardMemo, rawMemo: string, txid: string | undefined, idSuffix: string) {
+    if (!plan) {
+      throw new Error("No active plan");
+    }
+    if (parsed.type !== "GUARDIAN_ACK") {
+      throw new Error("Memo is not a GUARDIAN_ACK");
+    }
+    if (parsed.plan_id !== plan.id) {
+      throw new Error("ACK plan_id does not match the active plan");
+    }
+    if (parsed.package_hash !== plan.packageHash) {
+      throw new Error("ACK package_hash does not match the active package");
+    }
+    if (!parsed.guardian_id) {
+      throw new Error("ACK is missing guardian_id");
+    }
+
+    const matchingGuardian = guardians.find((item) => item.id === parsed.guardian_id);
+    if (!matchingGuardian) {
+      throw new Error("ACK guardian_id is not in this plan");
+    }
+
+    upsertMemoRecord({
+      id: `${plan.id}:${parsed.guardian_id}:ack:${idSuffix}`,
+      planId: plan.id,
+      guardianId: parsed.guardian_id,
+      type: "GUARDIAN_ACK",
+      memo: rawMemo,
+      txid,
+      direction: "guardian_to_owner",
+      status: "recorded",
+      createdAt: new Date().toISOString()
+    });
+    updateGuardian(parsed.guardian_id, { ...(txid ? { ackTxid: txid } : {}), status: "ack_received" });
+    return matchingGuardian;
   }
 
   if (!plan || !selectedInvite) {
@@ -155,6 +209,13 @@ export function SendMemoPanel() {
         </section>
         <ManualProofPanel onRecord={recordInviteTxid} txid={selectedInvite.txid} />
       </div>
+      <BridgeAckScanner
+        disabled={isScanningBridge}
+        message={bridgeScanMessage}
+        error={bridgeScanError}
+        scannedAcks={scannedAcks}
+        onScan={scanBridgeForAcks}
+      />
       <AckParserPanel onParse={parseAckMemo} message={ackMessage} />
     </div>
   );
@@ -170,6 +231,55 @@ function BridgeStatus({ health, error }: { health: BridgeHealth | null; error: s
         <p>{available ? "Bridge health check passed. You can try sending the invite memo locally." : error ?? health?.error ?? "Bridge or wallet unavailable. Copy/manual txid fallback remains usable."}</p>
       </div>
     </div>
+  );
+}
+
+function BridgeAckScanner({
+  disabled,
+  message,
+  error,
+  scannedAcks,
+  onScan
+}: {
+  disabled: boolean;
+  message: string | null;
+  error: string | null;
+  scannedAcks: ScannedAck[];
+  onScan: () => void;
+}) {
+  return (
+    <section className="border-2 border-ink bg-white shadow-[6px_6px_0_rgba(17,18,15,0.16)]">
+      <div className="border-b-2 border-ink bg-rail px-5 py-4 text-paper">
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-zcash">Bridge ACK scan</p>
+        <h2 className="mt-1 text-xl font-semibold">Find matching guardian replies</h2>
+      </div>
+      <div className="space-y-4 p-5">
+        <div className="border-2 border-ink bg-paper p-4 text-sm leading-6 text-ink">
+          The bridge scanner reads local wallet memo output, accepts only valid `ZECGUARD:v0` ACK payloads, and records matches for this plan and package hash. Manual paste remains available below.
+        </div>
+        <button
+          className="inline-flex items-center justify-center gap-2 border-2 border-ink bg-zcash px-5 py-3 font-mono text-sm font-bold uppercase tracking-[0.12em] text-ink disabled:cursor-not-allowed disabled:opacity-60"
+          type="button"
+          onClick={onScan}
+          disabled={disabled}
+        >
+          {disabled ? <RefreshCw className="size-4 animate-spin" aria-hidden="true" /> : <Inbox size={17} aria-hidden="true" />}
+          {disabled ? "Scanning" : "Sync and scan memos"}
+        </button>
+        {message ? <p className="border-2 border-ink bg-paper p-3 text-sm leading-6 text-ink">{message}</p> : null}
+        {error ? <p className="border-2 border-warning bg-[#fff7da] p-3 text-sm leading-6 text-warning">{error}</p> : null}
+        {scannedAcks.length ? (
+          <div className="grid gap-3">
+            {scannedAcks.map((ack) => (
+              <div key={`${ack.guardianId}:${ack.payload}`} className="border-2 border-ink bg-mint p-3 text-sm leading-6 text-ink">
+                <p className="font-semibold">ACK recorded for {ack.guardianName}</p>
+                <pre className="hash-text mt-2 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-xs">{ack.payload}</pre>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
