@@ -174,8 +174,13 @@ Current core tests cover:
 
 ## Documentation
 
+- [Hackathon submission notes](HACKATHON_SUBMISSION.md)
 - [Threat model](docs/threat-model.md)
 - [Memo format](docs/memo-format.md)
 - [Demo flow](docs/demo-flow.md)
 - [Architecture](docs/architecture.md)
 - [Roadmap](docs/roadmap.md)
+
+## License
+
+MIT. See [LICENSE](LICENSE).
