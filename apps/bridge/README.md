@@ -48,6 +48,19 @@ POST /wallet/sync
 
 The bridge rejects memo payloads that do not start with `ZECGUARD:v0`. It does not accept guardian shares in memos for the MVP.
 
+## zingo-cli Mapping
+
+The bridge expects the current `zingo-cli` command shape:
+
+```text
+send memo:   zingo-cli quicksend <address> <amount in zatoshis> "<memo>"
+list memos:  zingo-cli messages ZECGUARD:v0
+sync wallet: zingo-cli sync run
+tx list:     zingo-cli transactions
+```
+
+The web UI sends memo amounts as decimal ZEC, for example `0.0001`. The bridge converts those values to zatoshis before calling `zingo-cli`.
+
 ## Failure Mode
 
 If `zingo-cli` is unavailable or wallet sync fails, the bridge returns a clear error. The web app should keep copy/manual txid fallback available.

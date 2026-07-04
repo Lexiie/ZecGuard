@@ -154,6 +154,8 @@ GET  /wallet/tx/:txid
 POST /wallet/sync
 ```
 
+The bridge maps these calls to the current `zingo-cli` commands: `quicksend`, `messages ZECGUARD:v0`, `sync run`, and `transactions`. Memo amounts entered as decimal ZEC are converted to zatoshis before broadcast.
+
 ## Validation
 
 ```bash

@@ -12,19 +12,37 @@ export async function checkZingo(): Promise<CommandResult> {
 }
 
 export async function sendMemo(to: string, amount: string, memo: string): Promise<CommandResult> {
-  return runZingo(["send", to, amount, memo]);
+  return runZingo(["quicksend", to, zecToZatoshis(amount), memo]);
 }
 
 export async function listMemos(): Promise<CommandResult> {
-  return runZingo(["memos"]);
+  return runZingo(["messages", "ZECGUARD:v0"]);
 }
 
 export async function getTransaction(txid: string): Promise<CommandResult> {
-  return runZingo(["transaction", txid]);
+  const result = await runZingo(["transactions"]);
+  return {
+    ...result,
+    stdout: result.stdout.includes(txid) ? result.stdout : `Requested txid ${txid} was not found in wallet transactions.\n\n${result.stdout}`
+  };
 }
 
 export async function syncWallet(): Promise<CommandResult> {
-  return runZingo(["sync"]);
+  return runZingo(["sync", "run"]);
+}
+
+export function zecToZatoshis(amount: string): string {
+  const trimmed = amount.trim();
+  if (!/^\d+(\.\d{1,8})?$/.test(trimmed)) {
+    throw new Error("Amount must be a non-negative ZEC value with at most 8 decimal places");
+  }
+
+  const [whole, fraction = ""] = trimmed.split(".");
+  const zatoshis = BigInt(whole) * 100_000_000n + BigInt(fraction.padEnd(8, "0"));
+  if (zatoshis <= 0n) {
+    throw new Error("Amount must be greater than zero");
+  }
+  return zatoshis.toString();
 }
 
 function runZingo(args: string[]): Promise<CommandResult> {
