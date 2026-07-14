@@ -107,6 +107,6 @@ npm run build
 
 ```text
 Repository: https://github.com/Lexiie/ZecGuard
-Video demo: assets/demo.mp4
+Video demo: https://cdn.jsdelivr.net/gh/Lexiie/ZecGuard@main/assets/demo.mp4
 ZecHub PR: TODO
 ```
