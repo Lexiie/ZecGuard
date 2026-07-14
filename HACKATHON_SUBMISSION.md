@@ -11,18 +11,22 @@ ZecGuard is not a deadman switch, does not custody funds, does not upload recove
 - Primary: FROST / Social Recovery
 - Secondary: Infrastructure
 
-## Zcash Mainnet Interaction
+## Zcash Testnet Interaction
 
 ZecGuard uses Zcash shielded memos as the private coordination layer for guardian invites, ACKs, and package anchors.
 
-Mainnet proof for final submission:
+The submitted demo video uses testnet framing and dummy recovery material only. The MVP supports bridge-based memo sending through a local `zingo-cli` wrapper and manual memo copy fallback.
+
+Testnet proof fields for final submission:
 
 ```text
 Invite txid: TODO
 ACK txid: TODO
-Network: Zcash mainnet
+Network: Zcash testnet
 Memo prefix: ZECGUARD:v0
 ```
+
+No production or mainnet recovery material is used in the MVP demo.
 
 ## Prototype Scope
 
@@ -103,6 +107,6 @@ npm run build
 
 ```text
 Repository: https://github.com/Lexiie/ZecGuard
-Video demo: TODO
+Video demo: assets/demo.mp4
 ZecHub PR: TODO
 ```

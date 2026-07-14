@@ -17,6 +17,8 @@ ZecGuard is **not** a deadman switch. It does **not** custody funds, upload seed
 
 ![ZecGuard home screen](assets/zecguard-home.png)
 
+Demo video: [assets/demo.mp4](assets/demo.mp4)
+
 ## What It Does
 
 ```text
